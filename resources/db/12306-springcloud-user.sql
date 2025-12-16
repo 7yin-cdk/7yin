@@ -1,5 +1,4 @@
-USE
-12306_user_0;
+USE 12306_user_0;
 
 CREATE TABLE `t_user_0`
 (
@@ -1112,8 +1111,7 @@ CREATE TABLE `t_passenger_9`
     KEY             `idx_id_card` (`id_card`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='乘车人表';
 
-USE
-12306_user_1;
+USE 12306_user_1;
 
 CREATE TABLE `t_passenger_16`
 (

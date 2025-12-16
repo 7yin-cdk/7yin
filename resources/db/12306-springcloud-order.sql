@@ -1,6 +1,4 @@
-USE
-12306_order_0;
-
+USE 12306_order_0;
 CREATE TABLE `t_order_0`
 (
     `id`             bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT 'ID',
@@ -1025,8 +1023,7 @@ CREATE TABLE `t_order_item_passenger_9`
     KEY           `idx_id_card` (`id_card`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='乘车人订单关系表';
 
-USE
-12306_order_1;
+USE 12306_order_1;
 
 CREATE TABLE `t_order_16`
 (

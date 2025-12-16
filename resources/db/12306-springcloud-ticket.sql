@@ -1,5 +1,4 @@
-USE
-12306_ticket;
+USE 12306_ticket;
 
 CREATE TABLE `t_carriage`
 (

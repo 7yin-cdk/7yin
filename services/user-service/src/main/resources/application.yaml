@@ -1,6 +1,11 @@
 
 server:
   port: 9001
+  servlet:
+    encoding:
+      enabled: true
+      force: true
+      charset: UTF-8
 
 spring:
   application:
@@ -10,9 +15,14 @@ spring:
     url: jdbc:shardingsphere:classpath:shardingsphere-config.yaml
   data:
     redis:
-      host: 127.0.0.1
-      port: 6379
-      password: 123456
+      cluster:
+        nodes:
+          - 192.168.211.130:7001
+          - 192.168.211.130:7002
+          - 192.168.211.130:7003
+          - 192.168.211.130:8001
+          - 192.168.211.130:8002
+          - 192.168.211.130:8003
   cloud:
     nacos:
       discovery:

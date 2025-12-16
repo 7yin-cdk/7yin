@@ -1,6 +1,9 @@
+#指定数据源
 dataSources:
   ds_0:
+    #数据库连接池
     dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+    #驱动名称
     driverClassName: com.mysql.cj.jdbc.Driver
     jdbcUrl: jdbc:mysql://127.0.0.1:3306/12306_user_0?useUnicode=true&characterEncoding=UTF-8&rewriteBatchedStatements=true&allowMultiQueries=true&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
@@ -16,12 +19,19 @@ dataSources:
 rules:
   - !SHARDING
     tables:
+      #逻辑表名
       t_user:
+        #真实的数据库和数据库表节点
         actualDataNodes: ds_${0..1}.t_user_${0..31}
+        #定义分库规则，即数据应该路由到哪个数据库
         databaseStrategy:
+          #单分片键分库
           standard:
+            #指定分库依据的字段名
             shardingColumn: username
+            #指定分库算法
             shardingAlgorithmName: user_database_hash_mod
+        #定义分表规则，即数据应该路由到哪个表
         tableStrategy:
           standard:
             shardingColumn: username
@@ -56,13 +66,21 @@ rules:
           standard:
             shardingColumn: phone
             shardingAlgorithmName: t_user_phone_table_hash_mod
+    #分片算法
     shardingAlgorithms:
+      #自定义分片算法名称，用于在上面的配置中引用
       user_database_hash_mod:
+        #分片算法类型，有INLINE，STANDARD，CLASS_BASED等类型
         type: CLASS_BASED
+        #分片算法参数
         props:
+          #总分片数
           sharding-count: 32
+          #单个数据库上的分片数
           table-sharding-count: 16
+          #分片策略
           strategy: standard
+          #自定义分片算法的完整类路径
           algorithmClassName: org.opengoofy.index12306.framework.starter.database.algorithm.sharding.CustomDbHashModShardingAlgorithm
       passenger_database_hash_mod:
         type: CLASS_BASED

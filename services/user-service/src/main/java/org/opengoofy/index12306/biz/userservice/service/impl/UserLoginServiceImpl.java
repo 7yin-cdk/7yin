@@ -166,54 +166,119 @@ public class UserLoginServiceImpl implements UserLoginService {
     @Transactional(rollbackFor = Exception.class)
     @Override
     public UserRegisterRespDTO register(UserRegisterReqDTO requestParam) {
-        abstractChainContext.handler(UserChainMarkEnum.USER_REGISTER_FILTER.name(), requestParam);
+        //责任链模式验证请求参数
+        abstractChainContext.handler(UserChainMarkEnum.USER_REGISTER_FILTER.name(),requestParam);
+        //获取当前用户名的分布式锁
         RLock lock = redissonClient.getLock(LOCK_USER_REGISTER + requestParam.getUsername());
-        boolean tryLock = lock.tryLock();
-        if (!tryLock) {
+        boolean trylock = lock.tryLock();
+        //获取锁失败则说明当前用户名已在注册，返回异常
+        if (!trylock) {
             throw new ServiceException(HAS_USERNAME_NOTNULL);
         }
+        //使用try{}finally{}保证分布式锁释放
         try {
+            //捕获违反数据库唯一约束的异常
             try {
-                int inserted = userMapper.insert(BeanUtil.convert(requestParam, UserDO.class));
-                if (inserted < 1) {
+                //先向用户表插入数据
+                int insert = userMapper.insert(BeanUtil.convert(requestParam, UserDO.class));
+                //若插入失败则抛出异常
+                if (insert < 1) {
                     throw new ServiceException(USER_REGISTER_FAIL);
                 }
-            } catch (DuplicateKeyException dke) {
+            } catch (DuplicateKeyException e) {
                 log.error("用户名 [{}] 重复注册", requestParam.getUsername());
                 throw new ServiceException(HAS_USERNAME_NOTNULL);
             }
+            //利用构造者模式将请求参数转化为用户电话表对象
             UserPhoneDO userPhoneDO = UserPhoneDO.builder()
                     .phone(requestParam.getPhone())
                     .username(requestParam.getUsername())
                     .build();
+            //向用户电话表插入数据
+            //捕获违反数据库唯一约束的异常
             try {
                 userPhoneMapper.insert(userPhoneDO);
-            } catch (DuplicateKeyException dke) {
+            } catch (DuplicateKeyException e) {
                 log.error("用户 [{}] 注册手机号 [{}] 重复", requestParam.getUsername(), requestParam.getPhone());
                 throw new ServiceException(PHONE_REGISTERED);
             }
+            //利用构造者模式构造用户邮箱对象
+            //判断邮箱是否为空字符串
             if (StrUtil.isNotBlank(requestParam.getMail())) {
                 UserMailDO userMailDO = UserMailDO.builder()
-                        .mail(requestParam.getMail())
-                        .username(requestParam.getUsername())
-                        .build();
+                            .mail(requestParam.getMail())
+                            .username(requestParam.getUsername())
+                            .build();
+                //向邮箱表插入信息
+                //捕获违反唯一约束的异常
                 try {
                     userMailMapper.insert(userMailDO);
-                } catch (DuplicateKeyException dke) {
+                } catch (DuplicateKeyException e) {
                     log.error("用户 [{}] 注册邮箱 [{}] 重复", requestParam.getUsername(), requestParam.getMail());
                     throw new ServiceException(MAIL_REGISTERED);
                 }
             }
+            //将当前用户名从用户名可复用表删除
             String username = requestParam.getUsername();
             userReuseMapper.delete(Wrappers.update(new UserReuseDO(username)));
-            StringRedisTemplate instance = (StringRedisTemplate) distributedCache.getInstance();
-            instance.opsForSet().remove(USER_REGISTER_REUSE_SHARDING + hashShardingIdx(username), username);
-            // 布隆过滤器设计问题：设置多大、碰撞率以及初始容量不够了怎么办？详情查看：https://nageoffer.com/12306/question
+            //将当前用户名从用户可复用缓存删除
+            StringRedisTemplate stringRedisTemplate = (StringRedisTemplate)distributedCache.getInstance();
+            stringRedisTemplate.opsForSet().remove(USER_REGISTER_REUSE_SHARDING + hashShardingIdx(username), username);
+            //将当前用户名加入布隆过滤器
             userRegisterCachePenetrationBloomFilter.add(username);
-        } finally {
+        }finally {
             lock.unlock();
         }
         return BeanUtil.convert(requestParam, UserRegisterRespDTO.class);
+
+//        abstractChainContext.handler(UserChainMarkEnum.USER_REGISTER_FILTER.name(), requestParam);
+//        RLock lock = redissonClient.getLock(LOCK_USER_REGISTER + requestParam.getUsername());
+//        boolean tryLock = lock.tryLock();
+//        if (!tryLock) {
+//            throw new ServiceException(HAS_USERNAME_NOTNULL);
+//        }
+//        try {
+//            try {
+//                int inserted = userMapper.insert(BeanUtil.convert(requestParam, UserDO.class));
+//                if (inserted < 1) {
+//                    throw new ServiceException(USER_REGISTER_FAIL);
+//                }
+//            } catch (DuplicateKeyException dke) {
+//                log.error("用户名 [{}] 重复注册", requestParam.getUsername());
+//                throw new ServiceException(HAS_USERNAME_NOTNULL);
+//            }
+//            UserPhoneDO userPhoneDO = UserPhoneDO.builder()
+//                    .phone(requestParam.getPhone())
+//                    .username(requestParam.getUsername())
+//                    .build();
+//            try {
+//                userPhoneMapper.insert(userPhoneDO);
+//            } catch (DuplicateKeyException dke) {
+//                log.error("用户 [{}] 注册手机号 [{}] 重复", requestParam.getUsername(), requestParam.getPhone());
+//                throw new ServiceException(PHONE_REGISTERED);
+//            }
+//            if (StrUtil.isNotBlank(requestParam.getMail())) {
+//                UserMailDO userMailDO = UserMailDO.builder()
+//                        .mail(requestParam.getMail())
+//                        .username(requestParam.getUsername())
+//                        .build();
+//                try {
+//                    userMailMapper.insert(userMailDO);
+//                } catch (DuplicateKeyException dke) {
+//                    log.error("用户 [{}] 注册邮箱 [{}] 重复", requestParam.getUsername(), requestParam.getMail());
+//                    throw new ServiceException(MAIL_REGISTERED);
+//                }
+//            }
+//            String username = requestParam.getUsername();
+//            userReuseMapper.delete(Wrappers.update(new UserReuseDO(username)));
+//            StringRedisTemplate instance = (StringRedisTemplate) distributedCache.getInstance();
+//            instance.opsForSet().remove(USER_REGISTER_REUSE_SHARDING + hashShardingIdx(username), username);
+//            // 布隆过滤器设计问题：设置多大、碰撞率以及初始容量不够了怎么办？详情查看：https://nageoffer.com/12306/question
+//            userRegisterCachePenetrationBloomFilter.add(username);
+//        } finally {
+//            lock.unlock();
+//        }
+//        return BeanUtil.convert(requestParam, UserRegisterRespDTO.class);
     }
 
     @Transactional(rollbackFor = Exception.class)

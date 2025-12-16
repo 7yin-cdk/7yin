@@ -1,5 +1,4 @@
-USE
-12306_pay_0;
+USE 12306_pay_0;
 
 CREATE TABLE `t_pay_0`
 (
@@ -415,8 +414,7 @@ CREATE TABLE `t_refund`
     KEY              `idx_order_sn` (`order_sn`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='退款记录表';
 
-USE
-12306_pay_1;
+USE 12306_pay_1;
 
 CREATE TABLE `t_pay_16`
 (
